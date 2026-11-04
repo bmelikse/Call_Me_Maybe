@@ -3,11 +3,11 @@
 import numpy as np
 from .models import FunctionDefinition
 
-def is_token_allowed(current_text: str, token_text: str, valid_names: list[str], functions: list[FunctionDefinition]) -> bool:
+def is_token_allowed(current_text: str, token_text: str, valid_names: list[str]) -> bool:
     """Determine if appending token_text to current_text is allowed."""
     potential_text = current_text + token_text
 
-    if '{"name: "' in current_text:
+    if '{"name":' in current_text:
         name_typed_so_far = potential_text.split('{"name": "')[-1]
 
         for name in valid_names:
@@ -35,4 +35,3 @@ def mask_logits_for_json(
             logits[token_id] = -float("inf")
 
     return logits
-
