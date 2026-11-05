@@ -1,18 +1,16 @@
 import argparse
 from pathlib import Path
 import json
-
-from .loader import load_list, InputError, check_functions
-from .models import FunctionDefinition, TestPrompt, FunctionCall
+import os
+from src.loader import load_list, InputError
+from src.models import FunctionDefinition, TestPrompt
+from src.engine import generate_function_call
 from llm_sdk import Small_LLM_Model
 
 def main() -> None:
-    # argument parser object
     parser = argparse.ArgumentParser(description="Function calling with small LLM.")
-
     parser.add_argument(
         "--functions_definition",
-        # if no flags, it does default
         default="data/input/functions_definition.json",
         help="Path to the functions definition JSON file."
     )
@@ -26,26 +24,24 @@ def main() -> None:
         default="data/output/function_calls.json",
         help="Path where the output JSON file will be written.",
     )
-
     args = parser.parse_args()
 
-    try:
-        # load and validate function definitions using loader.py
-        print(f"Loading functions from: {args.functions_definition}")
-        functions = load_list(Path(args.functions_definition), FunctionDefinition)
-        check_functions(functions)
+    functions = load_list(Path(args.functions_definition), FunctionDefinition)
+    prompts = load_list(Path(args.input), TestPrompt)
+    
+    model = Small_LLM_Model()
+    vocab_map = {token_id: token_str for token_str, token_id in model._tokenizer.get_vocab().items()}
 
-        # load and validate test prompts!
-        print(f"Loading test prompts from: {args.input}")
-        tests = load_list(Path(args.input), TestPrompt)
+    results = []
 
-        # next, initialize the LLM model
-        print("Initializing LLM model...")
-        model = Small_LLM_Model()
-
-    except InputError as e:
-        print(f"Error: {e}")
-        exit(1)
+    for prompt_data in prompts:
+        prompt_text = prompt_data.prompt 
+        output_text = generate_function_call(model, prompt_text, functions, vocab_map)
+        results.append(output_text)
+    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    with open(args.output, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
+    print(f"Saved results to {args.output}")
 
 if __name__ == "__main__":
     main()
