@@ -36,6 +36,9 @@ def mask_logits_for_json(
 
     valid_function_names = [f.name for f in functions]
 
+    if '{"name": "' not in current_text:
+        return logits
+
     for token_id, token_text in vocab_map.items():
         if not is_token_allowed(current_text, token_text, valid_function_names):
             logits[token_id] = -float("inf")
