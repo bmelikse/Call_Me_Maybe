@@ -30,17 +30,17 @@ def mask_logits_for_json(
         functions: list[FunctionDefinition]
 ) -> np.ndarray:
     """
-    Examines every token in the vocabulary. If a token's text would violate 
-    our JSON structure or function names, we punish its logit score to -inf.
+    Optimized mask function: Skips the 152,000-token loop entirely 
+    if the function name has already been fully typed.
     """
-
     valid_function_names = [f.name for f in functions]
 
-    if '{"name": "' not in current_text:
+    if any(current_text.endswith(name) for name in valid_function_names):
         return logits
 
-    for token_id, token_text in vocab_map.items():
-        if not is_token_allowed(current_text, token_text, valid_function_names):
-            logits[token_id] = -float("inf")
+    if '{"name": "' in current_text:
+        for token_id, token_text in vocab_map.items():
+            if not is_token_allowed(current_text, token_text, valid_function_names):
+                logits[token_id] = -float("inf")
 
     return logits
