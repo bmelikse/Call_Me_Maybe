@@ -8,14 +8,14 @@ def is_token_allowed(current_text: str, token_text: str, valid_names: list[str])
     potential_text = current_text + token_text
 
     if '{"name": "' in current_text:
-        name_is_fully_typed = any(current_text.endswith(name) for name in valid_names)
-        
-        if not name_is_fully_typed:
-            name_typed_so_far = potential_text.split('{"name": "')[-1]
-            for name in valid_names:
-                if name.startswith(name_typed_so_far):
-                    return True
-            return False
+            name_is_fully_typed = any(current_text.endswith(name) for name in valid_names)
+            
+            if not name_is_fully_typed:
+                name_typed_so_far = potential_text[potential_text.rfind('{"name": "') + len('{"name": "'):]
+                for name in valid_names:
+                    if name.startswith(name_typed_so_far):
+                        return True
+                return False
 
     for name in valid_names:
         if current_text.endswith(name):
