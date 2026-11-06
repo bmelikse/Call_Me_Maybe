@@ -5,6 +5,7 @@ import torch
 from llm_sdk import Small_LLM_Model
 from .models import FunctionDefinition
 from .constraints import mask_logits_for_json
+import json
 
 def generate_function_call(
         model: Small_LLM_Model,
@@ -14,8 +15,8 @@ def generate_function_call(
 ) -> str:
     """Run the token generation loop for a given prompt."""
 
-    full_prompt = f'Prompt: {prompt}\nJSON Result: {{"prompt": "{prompt}", "name": "'
-
+    full_prompt = f'{{"prompt": "{prompt}", "name": "'
+    
     tensor_ids = model.encode(full_prompt)
     ids: list[int] = tensor_ids.tolist()[0]
 
@@ -33,8 +34,12 @@ def generate_function_call(
         next_id = int(np.argmax(masked_logits))
         ids.append(next_id)
 
-        decoded_token = model.decode([next_id])
-        if decoded_token == "}" and current_text.endswith("}"):
-            break
+        current_output = model.decode(ids).strip()
+        if current_output.startswith("{") and current_output.endswith("}"):
+            try:
+                json.loads(current_output)
+                break  # Valid complete JSON found. Stop instantly.
+            except json.JSONDecodeError:
+                pass
 
     return model.decode(ids)

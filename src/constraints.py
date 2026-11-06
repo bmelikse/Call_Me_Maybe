@@ -29,16 +29,20 @@ def mask_logits_for_json(
         vocab_map: dict[int, str],
         functions: list[FunctionDefinition]
 ) -> np.ndarray:
-    """
-    Optimized mask function: Skips the 152,000-token loop entirely 
-    if the function name has already been fully typed.
-    """
     valid_function_names = [f.name for f in functions]
+
+    if any(name in current_text for name in valid_function_names) and '"type":' in current_text or '"value":' in current_text:
+        return logits
 
     if any(current_text.endswith(name) for name in valid_function_names):
         return logits
 
     if '{"name": "' in current_text:
+        parts = current_text.split('{"name": "')
+        if len(parts) > 1 and '"' in parts[1]:
+            return logits
+
+        # SLOW PATH
         for token_id, token_text in vocab_map.items():
             if not is_token_allowed(current_text, token_text, valid_function_names):
                 logits[token_id] = -float("inf")
