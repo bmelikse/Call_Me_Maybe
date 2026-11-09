@@ -1,50 +1,84 @@
-"""Constraint checking and logit masking for valid JSON generation."""
-
 import numpy as np
+from llm_sdk import Small_LLM_Model
 from .models import FunctionDefinition
+import re
 
-def is_token_allowed(current_text: str, token_text: str, valid_names: list[str]) -> bool:
-    """Determine if appending token_text to current_text is allowed."""
-    potential_text = current_text + token_text
+PARTIAL = re.compile(r"-?(\d+(\.d*)?)?")  # the building phase, anything that could become a number
+COMPLETE = re.compile(r"-?\d+(\.\d+)?")  # fully finished numbers
 
-    if '{"name": "' in current_text:
-            name_is_fully_typed = any(current_text.endswith(name) for name in valid_names)
-            
-            if not name_is_fully_typed:
-                name_typed_so_far = potential_text[potential_text.rfind('{"name": "') + len('{"name": "'):]
-                for name in valid_names:
-                    if name.startswith(name_typed_so_far):
-                        return True
-                return False
+def build_token_texts(model: Small_LLM_Model, size: int) -> list[str]:
+    """Return the real text of every token ID."""
+    return [model.decode([i]) for i in range(size)]
 
-    for name in valid_names:
-        if current_text.endswith(name):
-            return token_text == '"'
+def build_prompt(request: str, functions: list[FunctionDefinition]) -> str:
+    """Describe the functions and the request to the model."""
+    lines = ["Available functions:"]
+    for f in functions:
+        params = ", ".join(f"{n}: {p.type}" for n, p in f.parameters.items())
+        lines.append(f"- {f.name}({params}): {f.description}")
+    lines.append("")
+    lines.append("Pick the function that fits the request, then copy its")
+    lines.append("argument values from the request, in order.")
+    lines.append(f"Request: {request}")
+    lines.append("Function to call:\n")
+    return "\n".join(lines)
 
-    return True
+def pick_function_name(
+    model: Small_LLM_Model,
+    prompt: str,
+    names: list[str],
+    token_texts: list[str],
+) -> str:
+    """Let the model spell one valid function name."""
+    ids: list[int] = model.encode(prompt).tolist()[0]
+    typed = ""
+    while typed not in names:
+        logits = np.array(model.get_logits_from_input_ids(ids), dtype=np.float32)
+        mask = np.full(len(logits), -np.inf)
+        for i, text in enumerate(token_texts):
+            if text and any(n.startswith(typed + text) for n in names):
+                mask[i] = 0.0
+        next_id = int(np.argmax(logits + mask))
+        ids.append(next_id)
+        typed += token_texts[next_id]
+    return typed
 
-def mask_logits_for_json(
-        logits: np.ndarray,
-        current_text: str,
-        vocab_map: dict[int, str],
-        functions: list[FunctionDefinition]
-) -> np.ndarray:
-    valid_function_names = [f.name for f in functions]
+NUMBER_CHARS = set("0123456789.-")
 
-    if any(name in current_text for name in valid_function_names) and '"type":' in current_text or '"value":' in current_text:
-        return logits
+def build_number_ids(token_texts: list[str]) -> list[int]:
+    """IDs of tokens made only of digits, '.' or '-'."""
+    return [
+        i for i, t in enumerate(token_texts) if t and set(t) <= NUMBER_CHARS
+    ]
 
-    if any(current_text.endswith(name) for name in valid_function_names):
-        return logits
+def build_newline_ids(token_texts: list[str]) -> list[int]:
+    """IDs of tokens made only of newline characters."""
+    return [i for i, t in enumerate(token_texts) if t and set(t) <= {"\n"}]
 
-    if '{"name": "' in current_text:
-        parts = current_text.split('{"name": "')
-        if len(parts) > 1 and '"' in parts[1]:
-            return logits
-
-        # SLOW PATH
-        for token_id, token_text in vocab_map.items():
-            if not is_token_allowed(current_text, token_text, valid_function_names):
-                logits[token_id] = -float("inf")
-
-    return logits
+def pick_number(
+        model: Small_LLM_Model,
+        prompt: str,
+        token_texts: list[str],
+        number_ids: list[int],
+        newline_ids: list[int],
+) -> float:
+    """Let the model write one number, then stop at a newline."""
+    ids: list[int] = model.encode(prompt).tolist()[0]
+    typed = ""
+    for _ in range(30):
+        logits = np.array(
+            model.get_logits_from_input_ids(ids), dtype=np.float32
+        )
+        mask = np.full(len(logits), -np.inf)
+        for i in number_ids:
+            if PARTIAL.fullmatch(typed + token_texts[i]):
+                mask[i] = 0.0
+        if COMPLETE.fullmatch(typed):
+            for i in newline_ids:
+                mask[i] = 0.0
+        next_id = int(np.argmax(logits + mask))
+        if next_id in newline_ids:
+            break
+        ids.append(next_id)
+        typed += token_texts[next_id]
+    return float(typed) if COMPLETE.fullmatch(typed) else 0.0

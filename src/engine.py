@@ -1,45 +1,33 @@
-'''The generation loop.'''
+"""The generation loop."""
 
-import numpy as np
-import torch
 from llm_sdk import Small_LLM_Model
-from .models import FunctionDefinition
-from .constraints import mask_logits_for_json
-import json
+from .models import FunctionCall, FunctionDefinition
+from .constraints import build_prompt, pick_function_name, pick_number
+from typing import Any
 
 def generate_function_call(
-        model: Small_LLM_Model,
-        prompt: str,
-        functions: list[FunctionDefinition],
-        vocab_map: dict[int, str]
-) -> str:
-    """Run the token generation loop for a given prompt."""
+    model: Small_LLM_Model,
+    request: str,
+    functions: list[FunctionDefinition],
+    token_texts: list[str],
+    number_ids: list[int],
+    newline_ids: list[int],
+) -> FunctionCall:
+    """Turn one request into a function call."""
+    names = [f.name for f in functions]
+    prompt = build_prompt(request, functions)
+    name = pick_function_name(model, prompt, names, token_texts)
+    function = next(f for f in functions if f.name == name)
 
-    full_prompt = f'{{"prompt": "{prompt}", "name": "'
-    
-    tensor_ids = model.encode(full_prompt)
-    ids: list[int] = tensor_ids.tolist()[0]
-
-    valid_names = [f.name for f in functions]
-
-    for _ in range(150):
-        # raw logits
-        logits = model.get_logits_from_input_ids(ids)
-
-        logits_np = np.array(logits, dtype=np.float32)
-        current_text = model.decode(ids)
-
-        masked_logits = mask_logits_for_json(logits_np, current_text, vocab_map, functions)
-        
-        next_id = int(np.argmax(masked_logits))
-        ids.append(next_id)
-
-        current_output = model.decode(ids).strip()
-        if current_output.startswith("{") and current_output.endswith("}"):
-            try:
-                json.loads(current_output)
-                break  # Valid complete JSON found. Stop instantly.
-            except json.JSONDecodeError:
-                pass
-
-    return model.decode(ids)
+    prompt += name + "\n"
+    parameters: dict[str, Any] = {}
+    for param, spec in function.parameters.items():
+        if spec.type == "number":
+            prompt += f"{param} = "
+            value = pick_number(
+                model, prompt, token_texts, number_ids, newline_ids
+            )
+            parameters[param] = value
+            shown = str(int(value)) if value.is_integer() else str(value)
+            prompt += f"{shown}\n"
+    return FunctionCall(prompt=request, name=name, parameters=parameters)

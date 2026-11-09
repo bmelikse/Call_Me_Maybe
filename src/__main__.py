@@ -1,18 +1,23 @@
 import argparse
-from pathlib import Path
 import json
-import os
-from src.loader import load_list, InputError
-from src.models import FunctionDefinition, TestPrompt
-from src.engine import generate_function_call
+import sys
+from pathlib import Path
 from llm_sdk import Small_LLM_Model
+from src.constraints import build_token_texts, build_number_ids, build_newline_ids
+from src.engine import generate_function_call
+from src.loader import InputError, check_functions, load_list
+from src.models import FunctionDefinition, TestPrompt
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Function calling with small LLM.")
+
+def main() -> int:
+    """Run the program and return the exit code."""
+    parser = argparse.ArgumentParser(
+        description="Function calling with a small LLM."
+    )
     parser.add_argument(
         "--functions_definition",
         default="data/input/functions_definition.json",
-        help="Path to the functions definition JSON file."
+        help="Path to the functions definition JSON file.",
     )
     parser.add_argument(
         "--input",
@@ -26,22 +31,41 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    functions = load_list(Path(args.functions_definition), FunctionDefinition)
-    prompts = load_list(Path(args.input), TestPrompt)
-    
+    try:
+        functions = load_list(
+            Path(args.functions_definition), FunctionDefinition
+        )
+        check_functions(functions)
+        prompts = load_list(Path(args.input), TestPrompt)
+    except InputError as err:
+        print(f"Error: {err}", file=sys.stderr)
+        return 1
+
     model = Small_LLM_Model()
-    vocab_map = {token_id: token_str for token_str, token_id in model._tokenizer.get_vocab().items()}
+    first = model.encode("hi").tolist()[0]
+    size = len(model.get_logits_from_input_ids(first))
+    token_texts = build_token_texts(model, size)
+    number_ids = build_number_ids(token_texts)
+    newline_ids = build_newline_ids(token_texts)
 
-    results = []
+    calls = [
+        generate_function_call(model, p.prompt, functions, token_texts, number_ids, newline_ids)
+        for p in prompts
+    ]
 
-    for prompt_data in prompts:
-        prompt_text = prompt_data.prompt 
-        output_text = generate_function_call(model, prompt_text, functions, vocab_map)
-        results.append(output_text)
-    os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
-    print(f"Saved results to {args.output}")
+    output = Path(args.output)
+    try:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("w", encoding="utf-8") as file:
+            json.dump([c.model_dump() for c in calls], file, indent=2)
+    except OSError as err:
+        print(f"Error: cannot write {output}: {err.strerror}",
+              file=sys.stderr)
+        return 1
+
+    print(f"Saved {len(calls)} results to {output}")
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
