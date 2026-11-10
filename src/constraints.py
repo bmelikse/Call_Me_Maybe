@@ -69,7 +69,7 @@ def pick_number(
         logits = np.array(
             model.get_logits_from_input_ids(ids), dtype=np.float32
         )
-        mask = np.full(len(logits), -np.inf)
+        mask = np.full(len(logits), -np.inf)  # new np list
         for i in number_ids:
             if PARTIAL.fullmatch(typed + token_texts[i]):
                 mask[i] = 0.0

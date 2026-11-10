@@ -5,6 +5,7 @@ from .models import FunctionCall, FunctionDefinition
 from .constraints import build_prompt, pick_function_name, pick_number
 from typing import Any
 
+
 def generate_function_call(
     model: Small_LLM_Model,
     request: str,
