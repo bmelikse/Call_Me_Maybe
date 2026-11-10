@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 from llm_sdk import Small_LLM_Model
-from src.constraints import build_token_texts, build_number_ids, build_newline_ids
+from src.constraints import build_token_texts, build_number_ids, build_newline_ids, build_string_mask
 from src.engine import generate_function_call
 from src.loader import InputError, check_functions, load_list
 from src.models import FunctionDefinition, TestPrompt
@@ -47,9 +47,10 @@ def main() -> int:
     token_texts = build_token_texts(model, size)
     number_ids = build_number_ids(token_texts)
     newline_ids = build_newline_ids(token_texts)
+    string_mask = build_string_mask(token_texts)
 
     calls = [
-        generate_function_call(model, p.prompt, functions, token_texts, number_ids, newline_ids)
+        generate_function_call(model, p.prompt, functions, token_texts, number_ids, newline_ids, string_mask)
         for p in prompts
     ]
 

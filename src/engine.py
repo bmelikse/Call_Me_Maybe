@@ -2,8 +2,9 @@
 
 from llm_sdk import Small_LLM_Model
 from .models import FunctionCall, FunctionDefinition
-from .constraints import build_prompt, pick_function_name, pick_number
+from .constraints import build_prompt, pick_function_name, pick_number, pick_string
 from typing import Any
+import numpy as np
 
 
 def generate_function_call(
@@ -13,6 +14,7 @@ def generate_function_call(
     token_texts: list[str],
     number_ids: list[int],
     newline_ids: list[int],
+    string_mask: np.ndarray,
 ) -> FunctionCall:
     """Turn one request into a function call."""
     names = [f.name for f in functions]
@@ -31,4 +33,9 @@ def generate_function_call(
             parameters[param] = value
             shown = str(int(value)) if value.is_integer() else str(value)
             prompt += f"{shown}\n"
+        elif spec.type == "string":
+            prompt += f'{param} = "'
+            text = pick_string(model, prompt, token_texts, string_mask)
+            parameters[param] = text
+            prompt += f'{text}"\n'
     return FunctionCall(prompt=request, name=name, parameters=parameters)

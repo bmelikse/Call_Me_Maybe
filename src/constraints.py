@@ -82,3 +82,36 @@ def pick_number(
         ids.append(next_id)
         typed += token_texts[next_id]
     return float(typed) if COMPLETE.fullmatch(typed) else 0.0
+
+# which tokens can appear inside the string:
+def build_string_mask(token_texts: list[str]) -> np.ndarray:
+    """0 for tokens allowed inside a string, -inf for the rest."""
+    mask = np.full(len(token_texts), -np.inf, dtype=np.float32)
+
+    for i, text in enumerate(token_texts):
+        if not text or "\n" in text or "\ufffd" in text:  # no empty tokens, newlines with quote and half-finished multi-byte characters
+            continue
+        if '"' not in text or text == '"':
+            mask[i] = 0.0
+    return mask
+
+def pick_string(
+        model: Small_LLM_Model,
+        prompt: str,
+        token_texts: list[str],
+        string_mask: np.ndarray,
+) -> str:
+    """Let the model write one string, ending at a closing quote."""
+    quote_id = token_texts.index('"')
+    ids: list[int] = model.encode(prompt).tolist()[0]
+    typed = ""
+    for _ in range(100):
+        logits = np.array(
+            model.get_logits_from_input_ids(ids), dtype=np.float32
+        )
+        next_id = int(np.argmax(logits + string_mask))
+        if next_id == quote_id:
+            break
+        ids.append(next_id)
+        typed += token_texts[next_id]
+    return typed
