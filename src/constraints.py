@@ -19,6 +19,14 @@ def build_prompt(request: str, functions: list[FunctionDefinition]) -> str:
     lines.append("")
     lines.append("Pick the function that fits the request, then copy its")
     lines.append("argument values from the request, in order.")
+
+    lines.append("Example:")
+    lines.append('Request: Replace all digits in "Test 123" with X')
+    lines.append('fn_substitute_string_with_regex')
+    lines.append('source_string = "Test 123"')
+    lines.append('regex = "\\\\d+"')
+    lines.append('replacement = "X"')
+    lines.append("")
     lines.append(f"Request: {request}")
     lines.append("Function to call:\n")
     return "\n".join(lines)
@@ -32,10 +40,15 @@ def pick_function_name(
     """Let the model spell one valid function name."""
     ids: list[int] = model.encode(prompt).tolist()[0]
     typed = ""
+    candidates = [
+    i for i, t in enumerate(token_texts)
+    if t and any(t in n for n in names)
+    ]
     while typed not in names:
         logits = np.array(model.get_logits_from_input_ids(ids), dtype=np.float32)
         mask = np.full(len(logits), -np.inf)
-        for i, text in enumerate(token_texts):
+        for i in candidates:
+            text = token_texts[i]
             if text and any(n.startswith(typed + text) for n in names):
                 mask[i] = 0.0
         next_id = int(np.argmax(logits + mask))
@@ -89,10 +102,10 @@ def build_string_mask(token_texts: list[str]) -> np.ndarray:
     mask = np.full(len(token_texts), -np.inf, dtype=np.float32)
 
     for i, text in enumerate(token_texts):
-        if not text or "\n" in text or "\ufffd" in text:  # no empty tokens, newlines with quote and half-finished multi-byte characters
+        if not text or "\ufffd" in text:  # no empty tokens, newlines with quote and half-finished multi-byte characters
             continue
-        if '"' not in text or text == '"':
-            mask[i] = 0.0
+        if '"' in text or "\n" not in text:
+            mask[i] = 0.0  # keep ur original score
     return mask
 
 def pick_string(
@@ -102,16 +115,18 @@ def pick_string(
         string_mask: np.ndarray,
 ) -> str:
     """Let the model write one string, ending at a closing quote."""
-    quote_id = token_texts.index('"')
     ids: list[int] = model.encode(prompt).tolist()[0]
     typed = ""
-    for _ in range(100):
+    for _ in range(60):
         logits = np.array(
-            model.get_logits_from_input_ids(ids), dtype=np.float32
-        )
+            model.get_logits_from_input_ids(ids), dtype=np.float32)
         next_id = int(np.argmax(logits + string_mask))
-        if next_id == quote_id:
+        text = token_texts[next_id]
+
+        if '"' in text:
+            typed += text.split('"')[0]
             break
+
         ids.append(next_id)
-        typed += token_texts[next_id]
+        typed += text
     return typed
