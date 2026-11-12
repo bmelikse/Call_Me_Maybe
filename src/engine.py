@@ -2,7 +2,7 @@
 
 from llm_sdk import Small_LLM_Model
 from .models import FunctionCall, FunctionDefinition
-from .constraints import build_prompt, pick_function_name, pick_number, pick_string, ARG_GUIDE
+from .constraints import build_prompt, pick_function_name, pick_number, pick_string
 from typing import Any
 import numpy as np
 
@@ -22,8 +22,7 @@ def generate_function_call(
     name = pick_function_name(model, prompt, names, token_texts)
     function = next(f for f in functions if f.name == name)
 
-    prompt += name + "\n" + ARG_GUIDE
-    prompt += f"Request again: {request}\n"
+    prompt += name + "\n"
     prompt += "Regex arguments must be real regular expressions, \n"
     prompt += "like \\d+ for digits or [aeiou] for vowels.\n"
     parameters: dict[str, Any] = {}
