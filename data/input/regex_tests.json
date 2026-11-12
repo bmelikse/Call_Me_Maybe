@@ -1,0 +1,7 @@
+[
+  {"prompt": "Replace all numbers in \"Hello 34 I'm 233 years old\" with NUMBERS"},
+  {"prompt": "Replace all vowels in 'Programming is fun' with asterisks"},
+  {"prompt": "Replace all spaces in 'a b c' with underscores"},
+  {"prompt": "Reverse the string 'world'"},
+  {"prompt": "What is 2.5 plus 4?"}
+]

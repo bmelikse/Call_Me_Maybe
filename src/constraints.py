@@ -3,7 +3,7 @@ from llm_sdk import Small_LLM_Model
 from .models import FunctionDefinition
 import re
 
-PARTIAL = re.compile(r"-?(\d+(\.d*)?)?")  # the building phase, anything that could become a number
+PARTIAL = re.compile(r"-?(\d+(\.\d*)?)?")  # the building phase, anything that could become a number
 COMPLETE = re.compile(r"-?\d+(\.\d+)?")  # fully finished numbers!
 
 def build_token_texts(model: Small_LLM_Model, size: int) -> list[str]:
@@ -17,15 +17,15 @@ def build_prompt(request: str, functions: list[FunctionDefinition]) -> str:
         params = ", ".join(f"{n}: {p.type}" for n, p in f.parameters.items())
         lines.append(f"- {f.name}({params}): {f.description}")
     lines.append("")
-    lines.append("Pick the function that fits the request, then copy its")
-    lines.append("argument values from the request, in order.")
-
+    lines.append("Pick the function that fits the request, then write")
+    lines.append("the argument values it needs, like in the example.")
+    lines.append("")
     lines.append("Example:")
-    lines.append('Request: Replace all digits in "Test 123" with X')
-    lines.append('fn_substitute_string_with_regex')
+    lines.append('Request: Replace all digits in "Test 123" with hashes')
+    lines.append("fn_substitute_string_with_regex")
     lines.append('source_string = "Test 123"')
-    lines.append('regex = "\\\\d+"')
-    lines.append('replacement = "X"')
+    lines.append(r'regex = "\d+"')
+    lines.append('replacement = "#"')
     lines.append("")
     lines.append(f"Request: {request}")
     lines.append("Function to call:\n")
@@ -122,11 +122,13 @@ def pick_string(
             model.get_logits_from_input_ids(ids), dtype=np.float32)
         next_id = int(np.argmax(logits + string_mask))
         text = token_texts[next_id]
-
         if '"' in text:
-            typed += text.split('"')[0]
+            before = text.split('"')[0]
+            if before.strip():  # keep real text, drop stray spaces
+                typed += before
             break
-
         ids.append(next_id)
+        if not typed and text.strip():  # no space right after the quote
+            text = text.lstrip()
         typed += text
     return typed

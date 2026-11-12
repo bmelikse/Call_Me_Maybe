@@ -23,8 +23,8 @@ def generate_function_call(
     function = next(f for f in functions if f.name == name)
 
     prompt += name + "\n"
-    prompt += "Regex arguments must be real regular expressions, \n"
-    prompt += "like \\d+ for digits or [aeiou] for vowels.\n"
+    # prompt += "Regex arguments must be real regular expressions, \n"
+    # prompt += "like \\d+ for digits or [aeiou] for vowels.\n"
     parameters: dict[str, Any] = {}
     for param, spec in function.parameters.items():
         if spec.type == "number":
