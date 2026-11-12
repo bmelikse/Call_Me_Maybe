@@ -5,10 +5,20 @@ import re
 
 PARTIAL = re.compile(r"-?(\d+(\.d*)?)?")  # the building phase, anything that could become a number
 COMPLETE = re.compile(r"-?\d+(\.\d+)?")  # fully finished numbers
+ARG_GUIDE = (
+    "Argument rules:\n"
+    "- Copy text values from the request exactly.\n"
+    "- A regex value is a real regular expression: \\d+ matches "
+    "numbers, [xyz] matches x, y or z.\n"
+    "- If the request says to replace with a symbol by name, "
+    "write the symbol itself, e.g. dashes -> -\n"
+)
+
 
 def build_token_texts(model: Small_LLM_Model, size: int) -> list[str]:
     """Return the real text of every token ID."""
     return [model.decode([i]) for i in range(size)]
+
 
 def build_prompt(request: str, functions: list[FunctionDefinition]) -> str:
     """Describe the functions and the request to the model."""
@@ -19,16 +29,16 @@ def build_prompt(request: str, functions: list[FunctionDefinition]) -> str:
     lines.append("")
     lines.append("Pick the function that fits the request, then copy its")
     lines.append("argument values from the request, in order.")
-
-    lines.append("Example:")
-    lines.append('Request: Replace all digits in "Test 123" with X')
-    lines.append('fn_substitute_string_with_regex')
-    lines.append('source_string = "Test 123"')
-    lines.append('regex = "\\\\d+"')
-    lines.append('replacement = "X"')
-    lines.append("")
-    lines.append(f"Request: {request}")
-    lines.append("Function to call:\n")
+    lines.append('Example: "replace spaces with underscores" -> replacement = "_"')
+    # lines.append("Example:")
+    # lines.append('Request: Replace all digits in "Test 123" with X')
+    # lines.append('fn_substitute_string_with_regex')
+    # lines.append('source_string = "Test 123"')
+    # lines.append('regex = "\\d+"')
+    # lines.append('replacement = "X"')
+    # lines.append("")
+    # lines.append(f"Request: {request}")
+    # lines.append("Function to call:\n")
     return "\n".join(lines)
 
 def pick_function_name(
