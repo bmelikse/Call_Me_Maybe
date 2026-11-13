@@ -1,0 +1,14 @@
+[
+  {
+    "name": "fn_multiply_integers",
+    "description": "Multiply two whole numbers.",
+    "parameters": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+    "returns": {"type": "integer"}
+  },
+  {
+    "name": "fn_set_feature",
+    "description": "Turn a named feature on or off.",
+    "parameters": {"name": {"type": "string"}, "enabled": {"type": "boolean"}},
+    "returns": {"type": "string"}
+  }
+]
