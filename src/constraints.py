@@ -5,6 +5,8 @@ import re
 
 PARTIAL = re.compile(r"-?(\d+(\.\d*)?)?")  # the building phase, anything that could become a number
 COMPLETE = re.compile(r"-?\d+(\.\d+)?")  # fully finished numbers!
+INT_PARTIAL = re.compile(r"-?\d*")
+INT_COMPLETE = re.compile(r"-?\d+")
 
 def build_token_texts(model: Small_LLM_Model, size: int) -> list[str]:
     """Return the real text of every token ID."""
@@ -74,19 +76,22 @@ def pick_number(
         token_texts: list[str],
         number_ids: list[int],
         newline_ids: list[int],
+        whole: bool = False
 ) -> float:
     """Let the model write one number, then stop at a newline."""
     ids: list[int] = model.encode(prompt).tolist()[0]
     typed = ""
+    partial = INT_PARTIAL if whole else PARTIAL
+    complete = INT_COMPLETE if whole else COMPLETE
     for _ in range(30):
         logits = np.array(
             model.get_logits_from_input_ids(ids), dtype=np.float32
         )
         mask = np.full(len(logits), -np.inf)  # new np list
         for i in number_ids:
-            if PARTIAL.fullmatch(typed + token_texts[i]):
+            if partial.fullmatch(typed + token_texts[i]):
                 mask[i] = 0.0
-        if COMPLETE.fullmatch(typed):
+        if complete.fullmatch(typed):
             for i in newline_ids:
                 mask[i] = 0.0
         next_id = int(np.argmax(logits + mask))
@@ -94,7 +99,7 @@ def pick_number(
             break
         ids.append(next_id)
         typed += token_texts[next_id]
-    return float(typed) if COMPLETE.fullmatch(typed) else 0.0
+    return float(typed) if complete.fullmatch(typed) else 0.0
 
 # which tokens can appear inside the string:
 def build_string_mask(token_texts: list[str]) -> np.ndarray:
@@ -104,6 +109,8 @@ def build_string_mask(token_texts: list[str]) -> np.ndarray:
     for i, text in enumerate(token_texts):
         if not text or "\ufffd" in text:  # no empty tokens, newlines with quote and half-finished multi-byte characters
             continue
+        if len(text) > 1 and len(set(text)) == 1 and not text[0].isalnum():
+            continue  # skip repeat tokens like '****'
         if '"' in text or "\n" not in text:
             mask[i] = 0.0  # keep ur original score
     return mask
@@ -124,7 +131,7 @@ def pick_string(
         text = token_texts[next_id]
         if '"' in text:
             before = text.split('"')[0]
-            if before.strip():  # keep real text, drop stray spaces
+            if not typed or before.strip():
                 typed += before
             break
         ids.append(next_id)
@@ -132,3 +139,24 @@ def pick_string(
             text = text.lstrip()
         typed += text
     return typed
+
+def build_arg_prompt(request: str, function: FunctionDefinition) -> str:
+    """Short prompt for the argument step: only the chosen function."""
+    params = ", ".join(
+        f"{n}: {p.type}" for n, p in function.parameters.items()
+    )
+    return (
+        "Example:\n"
+        "Function: fn_example(text: string, pattern: string, "
+        "new: string)\n"
+        'Request: Replace all digits in "Test 123" with hashes\n'
+        "Arguments:\n"
+        'text = "Test 123"\n'
+        r'pattern = "\d+"' "\n"
+        'new = "#"\n'
+        "\n"
+        f"Function: {function.name}({params})\n"
+        f"Description: {function.description}\n"
+        f"Request: {request}\n"
+        "Arguments:\n"
+    )
