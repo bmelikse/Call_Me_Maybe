@@ -46,14 +46,26 @@ def pick_function_name(
     i for i, t in enumerate(token_texts)
     if t and any(t in n for n in names)
     ]
-    while typed not in names:
+    # the set of newline-only tokens v
+    stops = {i for i, t in enumerate(token_texts) if t and set(t) <= {"\n"}}
+    while True:
+        longer = [n for n in names if n.startswith(typed) and n != typed]
+        if typed in names and not longer:
+            break
         logits = np.array(model.get_logits_from_input_ids(ids), dtype=np.float32)
         mask = np.full(len(logits), -np.inf)
         for i in candidates:
             text = token_texts[i]
             if text and any(n.startswith(typed + text) for n in names):
                 mask[i] = 0.0
+        if typed in names:
+            for i in stops:
+                mask[i] = 0.0
+        if not np.isfinite(mask).any():
+            raise ValueError(f"Cannot spell any of {names}")
         next_id = int(np.argmax(logits + mask))
+        if next_id in stops:
+            break
         ids.append(next_id)
         typed += token_texts[next_id]
     return typed
@@ -61,9 +73,10 @@ def pick_function_name(
 NUMBER_CHARS = set("0123456789.-")
 
 def build_number_ids(token_texts: list[str]) -> list[int]:
-    """IDs of tokens made only of digits, '.' or '-'."""
+    """IDs of tokens made of digits, '.' or '-' (maybe a leading space)."""
     return [
-        i for i, t in enumerate(token_texts) if t and set(t) <= NUMBER_CHARS
+        i for i, t in enumerate(token_texts)
+        if t.lstrip(" ") and set(t.lstrip(" ")) <= NUMBER_CHARS
     ]
 
 def build_newline_ids(token_texts: list[str]) -> list[int]:
@@ -76,9 +89,9 @@ def pick_number(
         token_texts: list[str],
         number_ids: list[int],
         newline_ids: list[int],
-        whole: bool = False
-) -> float:
-    """Let the model write one number, then stop at a newline."""
+        whole: bool = False,
+) -> str:
+    """Let the model write one number and return its text."""
     ids: list[int] = model.encode(prompt).tolist()[0]
     typed = ""
     partial = INT_PARTIAL if whole else PARTIAL
@@ -87,19 +100,22 @@ def pick_number(
         logits = np.array(
             model.get_logits_from_input_ids(ids), dtype=np.float32
         )
-        mask = np.full(len(logits), -np.inf)  # new np list
+        wanted = int(np.argmax(logits))  # the model's favourite
+        mask = np.full(len(logits), -np.inf)
         for i in number_ids:
-            if partial.fullmatch(typed + token_texts[i]):
+            if partial.fullmatch(typed + token_texts[i].lstrip(" ")):
                 mask[i] = 0.0
         if complete.fullmatch(typed):
             for i in newline_ids:
                 mask[i] = 0.0
+            if mask[wanted] == -np.inf:
+                break  # wants to stop, so we stop it
         next_id = int(np.argmax(logits + mask))
         if next_id in newline_ids:
             break
         ids.append(next_id)
-        typed += token_texts[next_id]
-    return float(typed) if complete.fullmatch(typed) else 0.0
+        typed += token_texts[next_id].lstrip(" ")
+    return typed if complete.fullmatch(typed) else "0"
 
 # which tokens can appear inside the string:
 def build_string_mask(token_texts: list[str]) -> np.ndarray:

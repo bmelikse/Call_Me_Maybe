@@ -1,0 +1,14 @@
+[
+  {
+    "name": "fn_greet",
+    "description": "Greet someone casually.",
+    "parameters": {"name": {"type": "string"}},
+    "returns": {"type": "string"}
+  },
+  {
+    "name": "fn_greet_formally",
+    "description": "Greet someone in a formal, polite way.",
+    "parameters": {"name": {"type": "string"}},
+    "returns": {"type": "string"}
+  }
+]

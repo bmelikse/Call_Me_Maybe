@@ -1,0 +1,14 @@
+[
+  {"prompt": "Reverse the string ''"},
+  {"prompt": "Reverse the string 'say \"hi\"'"},
+  {"prompt": "Reverse the string 'C:\\temp'"},
+  {"prompt": "Greet José"},
+  {"prompt": "Greet 李雷"},
+  {"prompt": "Greet 😀"},
+  {"prompt": "What is the sum of -5 and 2.5?"},
+  {"prompt": "What is the sum of 123456789012345678 and 2?"},
+  {"prompt": "What is the sum of 1000000 and 0.001?"},
+  {"prompt": "What is the square root of 0?"},
+  {"prompt": "Tell me a joke"},
+  {"prompt": ""}
+]

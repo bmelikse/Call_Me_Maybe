@@ -1,10 +1,18 @@
 """The generation loop."""
 
-from llm_sdk import Small_LLM_Model
-from .models import FunctionCall, FunctionDefinition
-from .constraints import build_prompt, pick_function_name, pick_number, pick_string, build_arg_prompt
 from typing import Any
+
 import numpy as np
+from llm_sdk import Small_LLM_Model
+
+from .constraints import (
+    build_arg_prompt,
+    build_prompt,
+    pick_function_name,
+    pick_number,
+    pick_string,
+)
+from .models import FunctionCall, FunctionDefinition
 
 
 def generate_function_call(
@@ -28,12 +36,11 @@ def generate_function_call(
         prompt += f"{param} = "
         if spec.type in ("number", "integer"):
             whole = spec.type == "integer"
-            value = pick_number(
+            raw = pick_number(
                 model, prompt, token_texts, number_ids, newline_ids, whole
             )
-            parameters[param] = int(value) if whole else value
-            shown = str(int(value)) if value.is_integer() else str(value)
-            prompt += f"{shown}\n"
+            parameters[param] = int(raw) if whole else float(raw)
+            prompt += raw + "\n"
         elif spec.type == "boolean":
             choice = pick_function_name(
                 model, prompt, ["true", "false"], token_texts
@@ -45,4 +52,6 @@ def generate_function_call(
             text = pick_string(model, prompt, token_texts, string_mask)
             parameters[param] = text
             prompt += f'{text}"\n'
+        else:
+            raise ValueError(f"Unsupported parameter type: {spec.type}")
     return FunctionCall(prompt=request, name=name, parameters=parameters)

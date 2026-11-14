@@ -40,19 +40,27 @@ def main() -> int:
     except InputError as err:
         print(f"Error: {err}", file=sys.stderr)
         return 1
-
-    model = Small_LLM_Model()
-    first = model.encode("hi").tolist()[0]
-    size = len(model.get_logits_from_input_ids(first))
-    token_texts = build_token_texts(model, size)
+    try:
+        model = Small_LLM_Model()
+        first = model.encode("hi").tolist()[0]
+        size = len(model.get_logits_from_input_ids(first))
+        token_texts = build_token_texts(model, size)
+    except Exception as err:
+        print(f"Error: cannot load the model: {err}", file=sys.stderr)
+        return 1
     number_ids = build_number_ids(token_texts)
     newline_ids = build_newline_ids(token_texts)
     string_mask = build_string_mask(token_texts)
 
-    calls = [
-        generate_function_call(model, p.prompt, functions, token_texts, number_ids, newline_ids, string_mask)
-        for p in prompts
-    ]
+    calls = []
+    for p in prompts:
+        try:
+            calls.append(
+                generate_function_call(
+                    model, p.prompt, functions, token_texts,
+                    number_ids, newline_ids, string_mask))
+        except Exception as err:
+            print(f"Warning: skipped {p.prompt!r}: {err}", file=sys.stderr)
 
     output = Path(args.output)
     try:
