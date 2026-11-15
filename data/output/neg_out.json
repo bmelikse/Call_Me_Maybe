@@ -1,0 +1,10 @@
+[
+  {
+    "prompt": "Multiply -3 and 4",
+    "name": "fn_multiply_integers",
+    "parameters": {
+      "a": 3,
+      "b": 4
+    }
+  }
+]

@@ -8,7 +8,8 @@ from .models import FunctionDefinition
 
 T = TypeVar("T", bound=BaseModel)
 
-def _describe(error: ValidationError) ->  str:
+
+def _describe(error: ValidationError) -> str:
     """Turn a pydantic error into one short readable line."""
     parts = []
     for err in error.errors():
@@ -16,11 +17,16 @@ def _describe(error: ValidationError) ->  str:
         parts.append(f"{where}: {err['msg']}")
     return ";".join(parts)
 
+
 class InputError(Exception):
     """Raised when an input file is missing, unreadable or malformed."""
 
+
 def load_list(path: Path, model: type[T]) -> list[T]:
-    """Read a JSON array from ``path`` and validate it against a Pydantic model."""
+    """
+    Read a JSON array from ``path`` and validate
+    it against a Pydantic model.
+    """
     try:
         with path.open(encoding="utf-8") as file:
             raw = json.load(file)

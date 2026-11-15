@@ -3,7 +3,12 @@ import json
 import sys
 from pathlib import Path
 from llm_sdk import Small_LLM_Model
-from src.constraints import build_token_texts, build_number_ids, build_newline_ids, build_string_mask
+from src.constraints import (
+    build_token_texts,
+    build_number_ids,
+    build_newline_ids,
+    build_string_mask,
+)
 from src.engine import generate_function_call
 from src.loader import InputError, check_functions, load_list
 from src.models import FunctionDefinition, TestPrompt

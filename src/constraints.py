@@ -3,14 +3,24 @@ from llm_sdk import Small_LLM_Model
 from .models import FunctionDefinition
 import re
 
-PARTIAL = re.compile(r"-?(\d+(\.\d*)?)?")  # the building phase, anything that could become a number
+# v the building phase, anything that could become a number
+PARTIAL = re.compile(r"-?(\d+(\.\d*)?)?")
 COMPLETE = re.compile(r"-?\d+(\.\d+)?")  # fully finished numbers!
 INT_PARTIAL = re.compile(r"-?\d*")
 INT_COMPLETE = re.compile(r"-?\d+")
+NUMBER_CHARS = set("0123456789.-")
+
+
+def closes_string(text: str) -> bool:
+    """True if the token holds a quote followed by a newline."""
+    _, quote, tail = text.partition('"')
+    return bool(quote) and "\n" in tail
+
 
 def build_token_texts(model: Small_LLM_Model, size: int) -> list[str]:
     """Return the real text of every token ID."""
     return [model.decode([i]) for i in range(size)]
+
 
 def build_prompt(request: str, functions: list[FunctionDefinition]) -> str:
     """Describe the functions and the request to the model."""
@@ -33,6 +43,7 @@ def build_prompt(request: str, functions: list[FunctionDefinition]) -> str:
     lines.append("Function to call:\n")
     return "\n".join(lines)
 
+
 def pick_function_name(
     model: Small_LLM_Model,
     prompt: str,
@@ -43,8 +54,8 @@ def pick_function_name(
     ids: list[int] = model.encode(prompt).tolist()[0]
     typed = ""
     candidates = [
-    i for i, t in enumerate(token_texts)
-    if t and any(t in n for n in names)
+        i for i, t in enumerate(token_texts)
+        if t and any(t in n for n in names)
     ]
     # the set of newline-only tokens v
     stops = {i for i, t in enumerate(token_texts) if t and set(t) <= {"\n"}}
@@ -52,7 +63,9 @@ def pick_function_name(
         longer = [n for n in names if n.startswith(typed) and n != typed]
         if typed in names and not longer:
             break
-        logits = np.array(model.get_logits_from_input_ids(ids), dtype=np.float32)
+        logits = np.array(
+            model.get_logits_from_input_ids(ids),
+            dtype=np.float32)
         mask = np.full(len(logits), -np.inf)
         for i in candidates:
             text = token_texts[i]
@@ -70,7 +83,6 @@ def pick_function_name(
         typed += token_texts[next_id]
     return typed
 
-NUMBER_CHARS = set("0123456789.-")
 
 def build_number_ids(token_texts: list[str]) -> list[int]:
     """IDs of tokens made of digits, '.' or '-' (maybe a leading space)."""
@@ -79,9 +91,11 @@ def build_number_ids(token_texts: list[str]) -> list[int]:
         if t.lstrip(" ") and set(t.lstrip(" ")) <= NUMBER_CHARS
     ]
 
+
 def build_newline_ids(token_texts: list[str]) -> list[int]:
     """IDs of tokens made only of newline characters."""
     return [i for i, t in enumerate(token_texts) if t and set(t) <= {"\n"}]
+
 
 def pick_number(
         model: Small_LLM_Model,
@@ -117,19 +131,22 @@ def pick_number(
         typed += token_texts[next_id].lstrip(" ")
     return typed if complete.fullmatch(typed) else "0"
 
+
 # which tokens can appear inside the string:
 def build_string_mask(token_texts: list[str]) -> np.ndarray:
     """0 for tokens allowed inside a string, -inf for the rest."""
     mask = np.full(len(token_texts), -np.inf, dtype=np.float32)
 
     for i, text in enumerate(token_texts):
-        if not text or "\ufffd" in text:  # no empty tokens, newlines with quote and half-finished multi-byte characters
+        # no empty tokens, \n with quote and half-done multi-byte chars
+        if not text or "\ufffd" in text:
             continue
         if len(text) > 1 and len(set(text)) == 1 and not text[0].isalnum():
             continue  # skip repeat tokens like '****'
-        if '"' in text or "\n" not in text:
+        if "\n" not in text or closes_string(text):
             mask[i] = 0.0  # keep ur original score
     return mask
+
 
 def pick_string(
         model: Small_LLM_Model,
@@ -145,8 +162,8 @@ def pick_string(
             model.get_logits_from_input_ids(ids), dtype=np.float32)
         next_id = int(np.argmax(logits + string_mask))
         text = token_texts[next_id]
-        if '"' in text:
-            before = text.split('"')[0]
+        if closes_string(text):
+            before = text.partition('"')[0]
             if not typed or before.strip():
                 typed += before
             break
@@ -155,6 +172,7 @@ def pick_string(
             text = text.lstrip()
         typed += text
     return typed
+
 
 def build_arg_prompt(request: str, function: FunctionDefinition) -> str:
     """Short prompt for the argument step: only the chosen function."""

@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Any
 
+
 class ParameterSpec(BaseModel):
     """Type description of one parameter or return value."""
     # e.g.: number
@@ -29,4 +30,3 @@ class FunctionCall(BaseModel):
     prompt: str
     name: str
     parameters: dict[str, Any]
-

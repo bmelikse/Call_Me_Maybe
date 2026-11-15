@@ -1,0 +1,89 @@
+[
+  {
+    "prompt": "Reverse the string ''",
+    "name": "fn_reverse_string",
+    "parameters": {
+      "s": "abc"
+    }
+  },
+  {
+    "prompt": "Reverse the string 'say \"hi\"'",
+    "name": "fn_reverse_string",
+    "parameters": {
+      "s": "hi"
+    }
+  },
+  {
+    "prompt": "Reverse the string 'C:\\temp'",
+    "name": "fn_reverse_string",
+    "parameters": {
+      "s": "C:\\temp"
+    }
+  },
+  {
+    "prompt": "Greet Jos\u00e9",
+    "name": "fn_greet",
+    "parameters": {
+      "name": "Jos\u00e9"
+    }
+  },
+  {
+    "prompt": "Greet \u674e\u96f7",
+    "name": "fn_greet",
+    "parameters": {
+      "name": "\u674e\u96f7"
+    }
+  },
+  {
+    "prompt": "Greet \ud83d\ude00",
+    "name": "fn_greet",
+    "parameters": {
+      "name": "John"
+    }
+  },
+  {
+    "prompt": "What is the sum of -5 and 2.5?",
+    "name": "fn_add_numbers",
+    "parameters": {
+      "a": 2.5,
+      "b": 5.0
+    }
+  },
+  {
+    "prompt": "What is the sum of 123456789012345678 and 2?",
+    "name": "fn_add_numbers",
+    "parameters": {
+      "a": 1.2345678901234568e+17,
+      "b": 2.0
+    }
+  },
+  {
+    "prompt": "What is the sum of 1000000 and 0.001?",
+    "name": "fn_add_numbers",
+    "parameters": {
+      "a": 1000000.0,
+      "b": 0.001
+    }
+  },
+  {
+    "prompt": "What is the square root of 0?",
+    "name": "fn_get_square_root",
+    "parameters": {
+      "a": 0.0
+    }
+  },
+  {
+    "prompt": "Tell me a joke",
+    "name": "fn_greet",
+    "parameters": {
+      "name": "Alice"
+    }
+  },
+  {
+    "prompt": "",
+    "name": "fn_reverse_string",
+    "parameters": {
+      "s": "Hello"
+    }
+  }
+]
