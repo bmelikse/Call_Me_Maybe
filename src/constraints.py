@@ -1,3 +1,5 @@
+"""Regex patterns and token constraints."""
+
 import numpy as np
 from llm_sdk import Small_LLM_Model
 from .models import FunctionDefinition

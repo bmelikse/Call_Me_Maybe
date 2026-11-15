@@ -1,3 +1,5 @@
+"""Pydantic models for the function-calling engine."""
+
 from pydantic import BaseModel
 from typing import Any
 

@@ -1,4 +1,4 @@
-"""The generation loop."""
+"""Core generation pipeline and logit-masking engine for function calling."""
 
 from typing import Any
 
