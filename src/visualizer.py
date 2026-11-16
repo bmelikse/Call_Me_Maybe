@@ -27,7 +27,7 @@ def show(steps: list[Step], gif_path: str | None = None) -> None:
         "axes.titlesize": 14,
     })
     fig, (bars, info) = plt.subplots(
-        1, 2, figsize=(13, 6), gridspec_kw={"width_ratios": [3, 2]}
+        1, 2, figsize=(19.5, 12), gridspec_kw={"width_ratios": [3, 2]}
     )
     fig.subplots_adjust(bottom=0.2)
     if fig.canvas.manager:
