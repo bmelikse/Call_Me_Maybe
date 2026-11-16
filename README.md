@@ -317,8 +317,8 @@ The output is always valid JSON in the right schema, but the **values** depend o
 `--visualize` opens a matplotlib window that replays every generation step, and `--gif <file>` saves the same animation as a GIF.
 
 ```bash
-uv run python -m src --visualize --input data/input/viz_demo.json --output data/output/viz_out.json
-uv run python -m src --gif assets/demo.gif --input data/input/viz_demo.json --output data/output/viz_out.json
+make visualize
+uv run python -m src --gif assets/demo.gif
 ```
 
 Each frame shows:
