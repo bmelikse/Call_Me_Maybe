@@ -1,5 +1,6 @@
 """Regex patterns and token constraints."""
 
+from .trace import Tracer
 import numpy as np
 from llm_sdk import Small_LLM_Model
 from .models import FunctionDefinition
@@ -51,6 +52,7 @@ def pick_function_name(
     prompt: str,
     names: list[str],
     token_texts: list[str],
+    tracer: Tracer | None = None,
 ) -> str:
     """Let the model spell one valid function name."""
     ids: list[int] = model.encode(prompt).tolist()[0]
@@ -79,6 +81,8 @@ def pick_function_name(
         if not np.isfinite(mask).any():
             raise ValueError(f"Cannot spell any of {names}")
         next_id = int(np.argmax(logits + mask))
+        if tracer is not None:
+            tracer.log_step(typed, logits, mask, next_id, token_texts)
         if next_id in stops:
             break
         ids.append(next_id)
@@ -106,6 +110,7 @@ def pick_number(
         number_ids: list[int],
         newline_ids: list[int],
         whole: bool = False,
+        tracer: Tracer | None = None,
 ) -> str:
     """Let the model write one number and return its text."""
     ids: list[int] = model.encode(prompt).tolist()[0]
@@ -155,6 +160,7 @@ def pick_string(
         prompt: str,
         token_texts: list[str],
         string_mask: np.ndarray,
+        tracer: Tracer | None = None,
 ) -> str:
     """Let the model write one string, ending at a closing quote."""
     ids: list[int] = model.encode(prompt).tolist()[0]
@@ -163,6 +169,8 @@ def pick_string(
         logits = np.array(
             model.get_logits_from_input_ids(ids), dtype=np.float32)
         next_id = int(np.argmax(logits + string_mask))
+        if tracer is not None:
+            tracer.log_step(typed, logits, string_mask, next_id, token_texts)
         text = token_texts[next_id]
         if closes_string(text):
             before = text.partition('"')[0]

@@ -12,6 +12,7 @@ from src.constraints import (
 from src.engine import generate_function_call
 from src.loader import InputError, check_functions, load_list
 from src.models import FunctionDefinition, TestPrompt
+from src.trace import Tracer
 
 
 def main() -> int:
@@ -33,6 +34,16 @@ def main() -> int:
         "--output",
         default="data/output/function_calls.json",
         help="Path where the output JSON file will be written.",
+    )
+    parser.add_argument(
+        "--visualize",
+        action="store_true",
+        help="Show the generation steps in a window.",
+    )
+    parser.add_argument(
+        "--gif",
+        default=None,
+        help="Save the generation steps as a GIF.",
     )
     args = parser.parse_args()
 
@@ -57,13 +68,17 @@ def main() -> int:
     newline_ids = build_newline_ids(token_texts)
     string_mask = build_string_mask(token_texts)
 
+    tracer = Tracer() if (args.visualize or args.gif) else None
+
     calls = []
     for p in prompts:
         try:
             calls.append(
                 generate_function_call(
                     model, p.prompt, functions, token_texts,
-                    number_ids, newline_ids, string_mask))
+                    number_ids, newline_ids, string_mask, tracer=tracer
+                )
+            )
         except Exception as err:
             print(f"Warning: skipped {p.prompt!r}: {err}", file=sys.stderr)
 
@@ -76,6 +91,10 @@ def main() -> int:
         print(f"Error: cannot write {output}: {err.strerror}",
               file=sys.stderr)
         return 1
+
+    if tracer is not None and tracer.steps:
+        from src.visualizer import show
+        show(tracer.steps, args.gif)
 
     print(f"Saved {len(calls)} results to {output}")
     return 0

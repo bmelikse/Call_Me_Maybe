@@ -1,7 +1,5 @@
-"""Pydantic models for the function-calling engine."""
-
-from pydantic import BaseModel
 from typing import Any
+from pydantic import BaseModel
 
 
 class ParameterSpec(BaseModel):
@@ -32,3 +30,21 @@ class FunctionCall(BaseModel):
     prompt: str
     name: str
     parameters: dict[str, Any]
+
+
+class Candidate(BaseModel):
+    """A candidate token considered by the model."""
+
+    text: str
+    prob: float
+    allowed: bool
+
+
+class Step(BaseModel):
+    """Recorded state of one generation step."""
+
+    request: str = ""
+    phase: str = ""
+    typed: str = ""
+    candidates: list[Candidate] = []
+    chosen: str = ""
