@@ -373,9 +373,9 @@ How it is built: a `Tracer` (a pydantic class) is passed to the three generation
 
 ### Videos
 
-- [<LLMs Explained: Tokens, Embeddings, Transformers and More>](https://youtu.be/YmLp8qe87A0)
-- [<A Brief History of AI: From Machine Learning to Gen AI to Agentic AI>](https://youtu.be/ZHCB09O6zUk)
-- [<Qwen 3 0.6B & 8B First Look & LOCAL Testing (Reasoning + Coding)>](https://youtu.be/O04fpKBL--c)
+- [LLMs Explained: Tokens, Embeddings, Transformers and More](https://youtu.be/YmLp8qe87A0)
+- [A Brief History of AI: From Machine Learning to Gen AI to Agentic AI](https://youtu.be/ZHCB09O6zUk)
+- [Qwen 3 0.6B & 8B First Look & LOCAL Testing (Reasoning + Coding)](https://youtu.be/O04fpKBL--c)
 
 ### AI usage
 
