@@ -3,6 +3,7 @@
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 from llm_sdk import Small_LLM_Model
 
 from .constraints import (
@@ -23,7 +24,7 @@ def generate_function_call(
     token_texts: list[str],
     number_ids: list[int],
     newline_ids: list[int],
-    string_mask: np.ndarray,
+    string_mask: npt.NDArray[np.float32],
     tracer: Tracer | None = None,
 ) -> FunctionCall:
     """Turn one request into a function call."""

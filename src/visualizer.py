@@ -6,11 +6,22 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.figure import Figure
 from matplotlib.widgets import Button
 
 from .models import Step
 
 GREEN, RED, BLUE = "#2e9e5b", "#d9534f", "#4aa3df"
+
+
+def make_button(fig: Figure, x: float, label: str) -> Button:
+    """A light-gray button with a black label, at horizontal position x."""
+    button = Button(
+        fig.add_axes((x, 0.04, 0.15, 0.08)), label,
+        color="#dddddd", hovercolor="#c4c4c4",
+    )
+    button.label.set_color("black")
+    return button
 
 
 def show(steps: list[Step], gif_path: str | None = None) -> None:
@@ -27,13 +38,13 @@ def show(steps: list[Step], gif_path: str | None = None) -> None:
         "axes.titlesize": 14,
     })
     fig, (bars, info) = plt.subplots(
-        1, 2, figsize=(19.5, 12), gridspec_kw={"width_ratios": [3, 2]}
+        1, 2, figsize=(19.5, 9), gridspec_kw={"width_ratios": [3, 2]}
     )
     fig.subplots_adjust(bottom=0.2)
     if fig.canvas.manager:
         fig.canvas.manager.set_window_title("Call Me Maybe")
 
-    def draw(i: int) -> None:
+    def draw(i: int) -> list[Any]:
         """Draw step number i."""
         step = steps[i]
         cands = step.candidates
@@ -50,7 +61,7 @@ def show(steps: list[Step], gif_path: str | None = None) -> None:
         bars.set_xlim(0, 1)
         bars.set_title("green = allowed, red = blocked, outline = chosen")
 
-        wanted = cands[0]  # model's own favorite
+        wanted = cands[0]  # the model's own favorite
         verdict = f"Model wanted {wanted.text!r}: allowed"
         if not wanted.allowed:
             verdict = (f"Model wanted {wanted.text!r}: BLOCKED\n"
@@ -71,11 +82,12 @@ def show(steps: list[Step], gif_path: str | None = None) -> None:
         info.plot([0, (i + 1) / len(steps)], [0.03, 0.03],
                   color=BLUE, linewidth=8)
         info.set(xlim=(0, 1), ylim=(0, 1))
+        return []
 
     if gif_path:
-        FuncAnimation(fig, draw, frames=len(steps)).save(
-            gif_path, writer="pillow", fps=1.25
-        )
+        FuncAnimation(
+            fig, draw, frames=len(steps), interval=800
+        ).save(gif_path, writer="pillow")
         return
 
     state: dict[str, Any] = {"i": 0, "playing": True}
@@ -103,12 +115,9 @@ def show(steps: list[Step], gif_path: str | None = None) -> None:
         if state["playing"] and state["i"] < len(steps) - 1:
             go(state["i"] + 1)
 
-    look = {"color": "#dddddd", "hovercolor": "#c4c4c4"}
-    prev = Button(fig.add_axes((0.25, 0.04, 0.15, 0.08)), "Previous", **look)
-    play = Button(fig.add_axes((0.425, 0.04, 0.15, 0.08)), "Pause", **look)
-    nxt = Button(fig.add_axes((0.6, 0.04, 0.15, 0.08)), "Next", **look)
-    for button in (prev, play, nxt):
-        button.label.set_color("black")
+    prev = make_button(fig, 0.25, "Previous")
+    play = make_button(fig, 0.425, "Pause")
+    nxt = make_button(fig, 0.6, "Next")
     prev.on_clicked(lambda _e: step_by(-1))
     play.on_clicked(toggle)
     nxt.on_clicked(lambda _e: step_by(1))

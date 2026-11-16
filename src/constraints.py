@@ -2,6 +2,7 @@
 
 from .trace import Tracer
 import numpy as np
+import numpy.typing as npt
 from llm_sdk import Small_LLM_Model
 from .models import FunctionDefinition
 import re
@@ -140,7 +141,7 @@ def pick_number(
 
 
 # which tokens can appear inside the string:
-def build_string_mask(token_texts: list[str]) -> np.ndarray:
+def build_string_mask(token_texts: list[str]) -> npt.NDArray[np.float32]:
     """0 for tokens allowed inside a string, -inf for the rest."""
     mask = np.full(len(token_texts), -np.inf, dtype=np.float32)
 
@@ -159,7 +160,7 @@ def pick_string(
         model: Small_LLM_Model,
         prompt: str,
         token_texts: list[str],
-        string_mask: np.ndarray,
+        string_mask: npt.NDArray[np.float32],
         tracer: Tracer | None = None,
 ) -> str:
     """Let the model write one string, ending at a closing quote."""

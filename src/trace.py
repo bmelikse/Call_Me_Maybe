@@ -1,6 +1,8 @@
 """Optional recording of the generation steps (used by the visualizer)."""
 
+from typing import Any
 import numpy as np
+import numpy.typing as npt
 from pydantic import BaseModel
 
 from .models import Candidate, Step
@@ -16,8 +18,8 @@ class Tracer(BaseModel):
     def log_step(
         self,
         typed: str,
-        logits: np.ndarray,
-        mask: np.ndarray,
+        logits: npt.NDArray[np.float32],
+        mask: npt.NDArray[np.floating[Any]],
         chosen_id: int,
         token_texts: list[str],
     ) -> None:
